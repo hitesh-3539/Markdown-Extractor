@@ -13,3 +13,6 @@ app/parsers/__pycache__/
 # Ignored Project Files
 required softwares.pages
 *.zip
+
+Screenshot*.png
+Screenshot*.jpg
