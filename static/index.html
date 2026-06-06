@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Document Converter</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Markdown Extractor</h1>
+        <p class="subtitle">Extract clean, structured Markdown from standard document formats for LLM ingestion.</p>
+
+        <div class="upload-area" id="dropZone">
+            <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.pptx" multiple onchange="updateFileName()">
+            <span class="upload-label" id="fileLabel">Click or drag files to upload</span>
+            <span class="upload-sublabel">Supports .pdf, .docx, .xlsx, .pptx</span>
+        </div>
+
+        <div class="button-group">
+            <button id="convertBtn" class="btn-primary" onclick="uploadFile()">Process Documents</button>
+            <button id="clearBtn" class="btn-secondary" onclick="clearUI()">Clear Workspace</button>
+        </div>
+
+        <div id="resultArea" class="result-area">
+            <textarea id="markdownOutput" spellcheck="false" readonly></textarea>
+            <button class="btn-primary" onclick="downloadZip()">Download .zip File</button>
+        </div>
+    </div>
+
+    <script>
+        let currentZipBlob = null;
+        let currentZipFilename = "converted_docs.zip";
+
+        function updateFileName() {
+            const fileInput = document.getElementById('fileInput');
+            const fileLabel = document.getElementById('fileLabel');
+            
+            if (fileInput.files.length === 1) {
+                fileLabel.innerText = fileInput.files[0].name;
+            } else if (fileInput.files.length > 1) {
+                fileLabel.innerText = `${fileInput.files.length} files selected`;
+            }
+        }
+
+        function clearUI() {
+            document.getElementById('fileInput').value = "";
+            document.getElementById('fileLabel').innerText = "Click or drag files to upload";
+            document.getElementById('resultArea').style.display = "none";
+            document.getElementById('markdownOutput').value = "";
+            document.getElementById('convertBtn').innerText = "Process Documents";
+            document.getElementById('convertBtn').disabled = false;
+            currentZipBlob = null; // Clear the stored zip file
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const convertBtn = document.getElementById('convertBtn');
+            const resultArea = document.getElementById('resultArea');
+            const markdownOutput = document.getElementById('markdownOutput');
+
+            if (fileInput.files.length === 0) {
+                alert("Please select at least one file first.");
+                return;
+            }
+
+            convertBtn.innerText = "Processing Data...";
+            convertBtn.disabled = true;
+            resultArea.style.display = "none";
+
+            const formData = new FormData();
+            // Loop through all selected files and add them to the request
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append("files", fileInput.files[i]); 
+            }
+
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Store the zip file data in our variable
+                    currentZipBlob = await response.blob();
+                    
+                    // Get the filename from the server
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    if (contentDisposition && contentDisposition.indexOf('filename=') !== -1) {
+                        currentZipFilename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+                    }
+
+                    // Update the text area to show success
+                    markdownOutput.value = "✅ Conversion Successful!\n\nYour files have been processed and zipped.\n\nClick the 'Download .zip File' button below to save them to your computer.";
+                    resultArea.style.display = "block";
+                } else {
+                    const errorText = await response.text();
+                    alert("Error: " + errorText);
+                }
+            } catch (error) {
+                alert("A network error occurred. Ensure the backend server is running.");
+            } finally {
+                convertBtn.innerText = "Process Documents";
+                convertBtn.disabled = false;
+            }
+        }
+
+        function downloadZip() {
+            if (!currentZipBlob) {
+                alert("No zip file available to download.");
+                return;
+            }
+            
+            // Create a temporary link and click it to download the file
+            const url = URL.createObjectURL(currentZipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentZipFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

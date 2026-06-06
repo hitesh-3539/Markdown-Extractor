@@ -1,0 +1,15 @@
+# Virtual Environment
+myenv/
+
+# Python Cache files
+__pycache__/
+*.pyc
+app/__pycache__/
+app/parsers/__pycache__/
+
+# Environment Variables (where you will eventually store real passwords safely)
+.env
+
+# Ignored Project Files
+required softwares.pages
+*.zip
